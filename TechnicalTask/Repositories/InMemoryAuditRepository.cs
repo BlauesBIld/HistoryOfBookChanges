@@ -4,14 +4,13 @@ using TechnicalTask.Entities;
 
 namespace TechnicalTask.Repositories;
 
-public class InMemoryAuditRepository : IAuditRepository
+public sealed class InMemoryAuditRepository : IAuditRepository
 {
     private readonly ConcurrentQueue<Audit> _audits = new();
 
     public Task AddAsync(Audit entry, CancellationToken ct = default)
     {
         _audits.Enqueue(entry);
-
         return Task.CompletedTask;
     }
 
@@ -25,7 +24,7 @@ public class InMemoryAuditRepository : IAuditRepository
             filtered = filtered.Where(a => a.BookId == query.BookId);
 
         if (query.ChangeType is not null)
-            filtered = filtered.Where(a => a.ChangeType == Enum.Parse<BookChangeType>(query.ChangeType, true));
+            filtered = filtered.Where(a => a.ChangeType == query.ChangeType.Value);
 
         if (query.FromUtc is not null)
             filtered = filtered.Where(a => a.ChangedAt >= query.FromUtc.Value);
@@ -45,12 +44,13 @@ public class InMemoryAuditRepository : IAuditRepository
 
         filtered = ApplySorting(filtered, query.SortDirection);
 
-        var totalCount = filtered.Count();
+        var results = filtered.ToList();
+        var totalCount = results.Count;
 
         var page = query.Page < 1 ? 1 : query.Page;
         var pageSize = query.PageSize < 1 ? 20 : query.PageSize;
 
-        var items = filtered
+        var items = results
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToList();

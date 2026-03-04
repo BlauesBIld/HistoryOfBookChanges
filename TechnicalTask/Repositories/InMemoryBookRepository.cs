@@ -3,7 +3,7 @@ using TechnicalTask.Entities;
 
 namespace TechnicalTask.Repositories;
 
-public class InMemoryBookRepository : IBookRepository
+public sealed class InMemoryBookRepository : IBookRepository
 {
     private readonly ConcurrentDictionary<Guid, Book> _books = new();
 
@@ -29,11 +29,11 @@ public class InMemoryBookRepository : IBookRepository
 
     public Task<bool> UpdateAsync(Book book, CancellationToken ct = default)
     {
-        if (!_books.ContainsKey(book.Id))
+        if (!_books.TryGetValue(book.Id, out var current))
             return Task.FromResult(false);
 
-        _books[book.Id] = book;
-        return Task.FromResult(true);
+        var updated = _books.TryUpdate(book.Id, book, current);
+        return Task.FromResult(updated);
     }
 
     public Task<bool> DeleteAsync(Guid id, CancellationToken ct = default)

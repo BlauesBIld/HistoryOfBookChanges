@@ -22,20 +22,27 @@ public sealed class BookService : IBookService
         _audits = audits;
     }
 
+    public async Task<IReadOnlyList<BookResponse>> GetAllAsync(CancellationToken ct = default)
+    {
+        var books = await _books.GetAllAsync(ct);
+        return books.Select(MapBook).ToList();
+    }
+
     public async Task<BookResponse> CreateAsync(CreateBookRequest request, CancellationToken ct = default)
     {
+        var title = NormalizeRequired(request.Title, nameof(request.Title));
+        var description = request.Description?.Trim();
+
         var bookId = Guid.NewGuid();
 
         var authors = (request.Authors ?? new List<AuthorRequest>())
             .Select(MapNewAuthor)
             .ToList();
 
-        var book = new Book(bookId, request.Title, request.Description, request.PublishDate, authors);
-
+        var book = new Book(bookId, title, description, request.PublishDate, authors);
         LinkBookToAuthors(book);
 
-        var authorNames = string.Join(", ", book.Authors.Select(a => $"{a.FirstName} {a.LastName}"));
-        var snapshot = $"Title=\"{book.Title}\", PublishDate={book.PublishDate:yyyy-MM-dd}, Authors=[{authorNames}]";
+        var snapshot = BuildBookSnapshot(book);
 
         await _books.AddAsync(book, ct);
         await AddAuditAsync(AuditFor(book.Id, BookChangeType.Created, DateTimeOffset.UtcNow, EntityName, null, snapshot, "Book was created"), ct);
@@ -76,8 +83,7 @@ public sealed class BookService : IBookService
         if (!removed)
             return false;
 
-        var authorNames = string.Join(", ", book.Authors.Select(a => $"{a.FirstName} {a.LastName}"));
-        var snapshot = $"Title=\"{book.Title}\", PublishDate={book.PublishDate:yyyy-MM-dd}, Authors=[{authorNames}]";
+        var snapshot = BuildBookSnapshot(book);
 
         await AddAuditAsync(AuditFor(id, BookChangeType.Deleted, DateTimeOffset.UtcNow, EntityName, snapshot, null, "Book was deleted"), ct);
         return true;
@@ -85,17 +91,23 @@ public sealed class BookService : IBookService
 
     private async Task ApplyScalarChangesAsync(Book book, UpdateBookRequest request, DateTimeOffset changedAt, CancellationToken ct)
     {
-        if (TrySet(book.Title, request.Title, out var newTitle))
+        if (request.Title is not null)
         {
-            await AddFieldAuditAsync(book.Id, BookChangeType.Updated, changedAt, FieldTitle, book.Title, newTitle,
-                $"Title was changed to \"{newTitle}\"", ct);
-            book.Title = newTitle!;
+            var normalized = NormalizeRequired(request.Title, nameof(request.Title));
+            if (normalized != book.Title)
+            {
+                await AddFieldAuditAsync(book.Id, BookChangeType.Updated, changedAt, FieldTitle, book.Title, normalized,
+                    $"Title was changed to \"{normalized}\"", ct);
+
+                book.Title = normalized;
+            }
         }
 
-        if (TrySet(book.Description, request.Description, out var newDescription))
+        if (TrySet(book.Description, request.Description?.Trim(), out var newDescription))
         {
             await AddFieldAuditAsync(book.Id, BookChangeType.Updated, changedAt, FieldDescription, book.Description, newDescription,
                 "Description was changed", ct);
+
             book.Description = newDescription;
         }
 
@@ -113,8 +125,15 @@ public sealed class BookService : IBookService
 
     private async Task ApplyAuthorChangesAsync(Book book, List<AuthorRequest> incomingRequests, DateTimeOffset changedAt, CancellationToken ct)
     {
+        var normalizedIncoming = incomingRequests
+            .Select(a => new AuthorRequest(
+                NormalizeRequired(a.FirstName, nameof(a.FirstName)),
+                NormalizeRequired(a.LastName, nameof(a.LastName)),
+                a.BirthDate))
+            .ToList();
+
         var currentKeys = book.Authors.Select(AuthorKey.From).ToHashSet();
-        var incomingKeys = incomingRequests.Select(AuthorKey.From).ToHashSet();
+        var incomingKeys = normalizedIncoming.Select(AuthorKey.From).ToHashSet();
 
         var keysToAdd = incomingKeys.Except(currentKeys).ToList();
         var keysToRemove = currentKeys.Except(incomingKeys).ToList();
@@ -122,7 +141,7 @@ public sealed class BookService : IBookService
         if (keysToAdd.Count == 0 && keysToRemove.Count == 0)
             return;
 
-        var incomingByKey = incomingRequests
+        var incomingByKey = normalizedIncoming
             .GroupBy(AuthorKey.From)
             .ToDictionary(g => g.Key, g => g.First());
 
@@ -187,14 +206,7 @@ public sealed class BookService : IBookService
         await _audits.AddAsync(audit, ct);
     }
 
-    private static Audit AuditFor(
-        Guid bookId,
-        BookChangeType changeType,
-        DateTimeOffset changedAt,
-        string fieldName,
-        string? oldValue,
-        string? newValue,
-        string description)
+    private static Audit AuditFor(Guid bookId, BookChangeType changeType, DateTimeOffset changedAt, string fieldName, string? oldValue, string? newValue, string description)
     {
         return new Audit(
             Guid.NewGuid(),
@@ -229,19 +241,41 @@ public sealed class BookService : IBookService
         return new BookResponse(book.Id, book.Title, book.Description, book.PublishDate, authors);
     }
 
+    private static string BuildBookSnapshot(Book book)
+    {
+        var authorNames = string.Join(", ", book.Authors.Select(a => $"{a.FirstName} {a.LastName}"));
+        return $"Title=\"{book.Title}\", PublishDate={book.PublishDate:yyyy-MM-dd}, Authors=[{authorNames}]";
+    }
+
+    private static string NormalizeRequired(string value, string name)
+    {
+        var trimmed = value.Trim();
+        if (trimmed.Length == 0)
+            throw new ArgumentException($"{name} must not be empty.", name);
+
+        return trimmed;
+    }
+
     private readonly record struct AuthorKey(string FirstLowerTrim, string LastLowerTrim, DateTime? BirthDate)
     {
-        public string Display =>
-            $"{Cap(FirstLowerTrim)} {Cap(LastLowerTrim)} ({BirthDate:yyyy-MM-dd})";
+        public string Display => $"{Cap(FirstLowerTrim)} {Cap(LastLowerTrim)} ({BirthDate:yyyy-MM-dd})";
 
         public static AuthorKey From(AuthorRequest a)
         {
-            return new AuthorKey(a.FirstName.Trim().ToLowerInvariant(), a.LastName.Trim().ToLowerInvariant(), a.BirthDate);
+            return new AuthorKey(
+                a.FirstName.Trim().ToLowerInvariant(),
+                a.LastName.Trim().ToLowerInvariant(),
+                a.BirthDate
+            );
         }
 
         public static AuthorKey From(Author a)
         {
-            return new AuthorKey(a.FirstName.Trim().ToLowerInvariant(), a.LastName.Trim().ToLowerInvariant(), a.BirthDate);
+            return new AuthorKey(
+                a.FirstName.Trim().ToLowerInvariant(),
+                a.LastName.Trim().ToLowerInvariant(),
+                a.BirthDate
+            );
         }
 
         private static string Cap(string s)

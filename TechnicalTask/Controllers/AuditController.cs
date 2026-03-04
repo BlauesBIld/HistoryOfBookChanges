@@ -18,11 +18,33 @@ public sealed class AuditController : ControllerBase
 
     [HttpGet]
     [ProducesResponseType(typeof(PagedResponse<AuditResponse>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<PagedResponse<AuditResponse>>> Query(
-        [FromQuery] AuditQueryRequest request,
-        CancellationToken ct)
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<PagedResponse<AuditResponse>>> Query([FromQuery] AuditQueryRequest request, CancellationToken ct)
     {
-        var result = await _auditService.QueryAsync(request, ct);
-        return Ok(result);
+        try
+        {
+            var result = await _auditService.QueryAsync(request, ct);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return ValidationProblem(ex.Message);
+        }
+    }
+
+    [HttpGet("groups")]
+    [ProducesResponseType(typeof(PagedResponse<AuditGroupResponse<AuditResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<PagedResponse<AuditGroupResponse<AuditResponse>>>> QueryGrouped([FromQuery] AuditQueryRequest request, CancellationToken ct)
+    {
+        try
+        {
+            var result = await _auditService.QueryGroupedAsync(request, ct);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return ValidationProblem(ex.Message);
+        }
     }
 }

@@ -16,6 +16,14 @@ public sealed class BookController : ControllerBase
         _bookService = bookService;
     }
 
+    [HttpGet]
+    [ProducesResponseType(typeof(IReadOnlyList<BookResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<BookResponse>>> GetAll(CancellationToken ct)
+    {
+        var items = await _bookService.GetAllAsync(ct);
+        return Ok(items);
+    }
+
     [HttpPost]
     [ProducesResponseType(typeof(BookResponse), StatusCodes.Status201Created)]
     public async Task<ActionResult<BookResponse>> Create(
