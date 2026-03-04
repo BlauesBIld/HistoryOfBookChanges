@@ -20,5 +20,5 @@ public class Author
     public string LastName { get; set; } = null!;
     public DateTime? BirthDate { get; set; }
 
-    public List<Book> Books { get; set; }
+    public List<Book> Books { get; set; } = null!;
 }
