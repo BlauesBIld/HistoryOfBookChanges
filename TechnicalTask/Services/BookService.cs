@@ -35,8 +35,11 @@ public sealed class BookService : IBookService
 
         LinkBookToAuthors(book);
 
+        var authorNames = string.Join(", ", book.Authors.Select(a => $"{a.FirstName} {a.LastName}"));
+        var snapshot = $"Title=\"{book.Title}\", PublishDate={book.PublishDate:yyyy-MM-dd}, Authors=[{authorNames}]";
+
         await _books.AddAsync(book, ct);
-        await AddAuditAsync(AuditFor(book.Id, BookChangeType.Created, DateTimeOffset.UtcNow, EntityName, null, null, "Book was created"), ct);
+        await AddAuditAsync(AuditFor(book.Id, BookChangeType.Created, DateTimeOffset.UtcNow, EntityName, null, snapshot, "Book was created"), ct);
 
         return MapBook(book);
     }
@@ -74,7 +77,10 @@ public sealed class BookService : IBookService
         if (!removed)
             return false;
 
-        await AddAuditAsync(AuditFor(id, BookChangeType.Deleted, DateTimeOffset.UtcNow, EntityName, null, null, "Book was deleted"), ct);
+        var authorNames = string.Join(", ", book.Authors.Select(a => $"{a.FirstName} {a.LastName}"));
+        var snapshot = $"Title=\"{book.Title}\", PublishDate={book.PublishDate:yyyy-MM-dd}, Authors=[{authorNames}]";
+
+        await AddAuditAsync(AuditFor(id, BookChangeType.Deleted, DateTimeOffset.UtcNow, EntityName, snapshot, null, "Book was deleted"), ct);
         return true;
     }
 
