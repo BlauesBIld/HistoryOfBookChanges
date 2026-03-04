@@ -1,12 +1,7 @@
+using TechnicalTask.Common;
 using TechnicalTask.Entities;
 
 namespace TechnicalTask.Repositories;
-
-public enum SortDirection
-{
-    Ascending,
-    Descending
-}
 
 public sealed record AuditQuery(
     Guid? BookId,

@@ -1,13 +1,9 @@
+using TechnicalTask.Common;
+
 namespace TechnicalTask.Contracts.Requests;
 
-public enum SortDirection
-{
-    Ascending,
-    Descending
-}
-
 public sealed record AuditQueryRequest(
-    string? BookUid,
+    Guid? BookId,
     DateTime? FromUtc,
     DateTime? ToUtc,
     string? Search,
