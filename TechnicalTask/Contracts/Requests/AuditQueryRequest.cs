@@ -2,8 +2,8 @@ namespace TechnicalTask.Contracts.Requests;
 
 public enum SortDirection
 {
-    Asc,
-    Desc
+    Ascending,
+    Descending
 }
 
 public sealed record AuditQueryRequest(
@@ -14,5 +14,5 @@ public sealed record AuditQueryRequest(
     string? ChangeType,
     int Page = 1,
     int PageSize = 20,
-    SortDirection SortDirection = SortDirection.Desc
+    SortDirection SortDirection = SortDirection.Descending
 );
