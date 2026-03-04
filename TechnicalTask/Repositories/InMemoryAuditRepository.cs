@@ -1,29 +1,22 @@
+using System.Collections.Concurrent;
 using TechnicalTask.Entities;
 
 namespace TechnicalTask.Repositories;
 
 public class InMemoryAuditRepository : IAuditRepository
 {
-    private readonly List<Audit> _audits = new();
-    private readonly object _threadLock = new();
+    private readonly ConcurrentQueue<Audit> _audits = new();
 
     public Task AddAsync(Audit entry, CancellationToken ct = default)
     {
-        lock (_threadLock)
-        {
-            _audits.Add(entry);
-        }
+        _audits.Enqueue(entry);
 
         return Task.CompletedTask;
     }
 
     public Task<PagedResult<Audit>> QueryAsync(AuditQuery query, CancellationToken ct = default)
     {
-        List<Audit> snapshot;
-        lock (_threadLock)
-        {
-            snapshot = _audits.ToList();
-        }
+        var snapshot = _audits.ToList();
 
         IEnumerable<Audit> filtered = snapshot;
 
