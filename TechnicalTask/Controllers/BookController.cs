@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using TechnicalTask.Contracts.Requests;
 using TechnicalTask.Contracts.Responses;
-using TechnicalTask.Services.Interfaces;
+using TechnicalTask.Services;
 
 namespace TechnicalTask.Controllers;
 

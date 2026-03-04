@@ -1,7 +1,6 @@
 using TechnicalTask.Common;
 using TechnicalTask.Repositories;
 using TechnicalTask.Services;
-using TechnicalTask.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 

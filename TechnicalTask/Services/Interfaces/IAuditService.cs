@@ -1,7 +1,7 @@
 using TechnicalTask.Contracts.Requests;
 using TechnicalTask.Contracts.Responses;
 
-namespace TechnicalTask.Services.Interfaces;
+namespace TechnicalTask.Services;
 
 public interface IAuditService
 {

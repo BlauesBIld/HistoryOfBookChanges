@@ -1,5 +1,5 @@
 using TechnicalTask.Contracts.Requests;
-using TechnicalTask.Services.Interfaces;
+using TechnicalTask.Services;
 
 namespace TechnicalTask.Common;
 
@@ -90,7 +90,7 @@ public static class SeedData
         return new CreateBookRequest(title, description, publishDate, authors);
     }
 
-    private static UpdateBookRequest CreateRandomUpdateRequest(Random rng, string currentTitle)
+    private static UpdateBookRequest CreateRandomUpdateRequest(Random rng, string? currentTitle)
     {
         string? title = null;
         string? description = null;

@@ -2,7 +2,6 @@ using TechnicalTask.Contracts.Requests;
 using TechnicalTask.Contracts.Responses;
 using TechnicalTask.Entities;
 using TechnicalTask.Repositories;
-using TechnicalTask.Services.Interfaces;
 
 namespace TechnicalTask.Services;
 
@@ -90,7 +89,7 @@ public sealed class BookService : IBookService
         {
             await AddFieldAuditAsync(book.Id, BookChangeType.Updated, changedAt, FieldTitle, book.Title, newTitle,
                 $"Title was changed to \"{newTitle}\"", ct);
-            book.Title = newTitle;
+            book.Title = newTitle!;
         }
 
         if (TrySet(book.Description, request.Description, out var newDescription))
@@ -209,7 +208,7 @@ public sealed class BookService : IBookService
         );
     }
 
-    private static bool TrySet(string current, string? incoming, out string newValue)
+    private static bool TrySet(string? current, string? incoming, out string? newValue)
     {
         if (incoming is null || incoming == current)
         {

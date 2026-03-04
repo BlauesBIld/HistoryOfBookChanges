@@ -2,7 +2,6 @@ using TechnicalTask.Contracts.Requests;
 using TechnicalTask.Contracts.Responses;
 using TechnicalTask.Entities;
 using TechnicalTask.Repositories;
-using TechnicalTask.Services.Interfaces;
 
 namespace TechnicalTask.Services;
 
