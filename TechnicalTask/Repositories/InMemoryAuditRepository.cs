@@ -7,16 +7,26 @@ namespace TechnicalTask.Repositories;
 public sealed class InMemoryAuditRepository : IAuditRepository
 {
     private readonly ConcurrentQueue<Audit> _audits = new();
+    private readonly ConcurrentDictionary<Guid, ConcurrentQueue<Audit>> _auditsByBookId = new();
 
     public Task AddAsync(Audit entry, CancellationToken ct = default)
     {
         _audits.Enqueue(entry);
+
+        var bookQueue = _auditsByBookId.GetOrAdd(entry.BookId, _ => new ConcurrentQueue<Audit>());
+        bookQueue.Enqueue(entry);
+
         return Task.CompletedTask;
     }
 
     public Task<PagedResult<Audit>> QueryAsync(AuditQuery query, CancellationToken ct = default)
     {
-        var snapshot = _audits.ToList();
+        List<Audit> snapshot;
+
+        if (query.BookId is not null && _auditsByBookId.TryGetValue(query.BookId.Value, out var queue))
+            snapshot = queue.ToList();
+        else
+            snapshot = _audits.ToList();
 
         IEnumerable<Audit> filtered = snapshot;
 

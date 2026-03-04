@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using TechnicalTask.Common;
+using TechnicalTask.Concurrency;
 using TechnicalTask.Repositories;
 using TechnicalTask.Services;
 
@@ -17,6 +18,8 @@ builder.Services.AddSingleton<IAuditRepository, InMemoryAuditRepository>();
 
 builder.Services.AddScoped<IBookService, BookService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
+
+builder.Services.AddSingleton<BookLockProvider>();
 
 var app = builder.Build();
 

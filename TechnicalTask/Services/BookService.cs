@@ -1,3 +1,4 @@
+using TechnicalTask.Concurrency;
 using TechnicalTask.Contracts.Requests;
 using TechnicalTask.Contracts.Responses;
 using TechnicalTask.Entities;
@@ -14,12 +15,14 @@ public sealed class BookService : IBookService
     private const string FieldAuthors = "Authors";
 
     private readonly IAuditRepository _audits;
+    private readonly BookLockProvider _bookLocks;
     private readonly IBookRepository _books;
 
-    public BookService(IBookRepository books, IAuditRepository audits)
+    public BookService(IBookRepository books, IAuditRepository audits, BookLockProvider bookLocks)
     {
         _books = books;
         _audits = audits;
+        _bookLocks = bookLocks;
     }
 
     public async Task<IReadOnlyList<BookResponse>> GetAllAsync(CancellationToken ct = default)
@@ -58,35 +61,56 @@ public sealed class BookService : IBookService
 
     public async Task<BookResponse?> UpdateAsync(Guid id, UpdateBookRequest request, CancellationToken ct = default)
     {
-        var book = await _books.GetByIdAsync(id, ct);
-        if (book is null)
-            return null;
+        var gate = _bookLocks.Get(id);
+        await gate.WaitAsync(ct);
+        try
+        {
+            var book = await _books.GetByIdAsync(id, ct);
+            if (book is null)
+                return null;
 
-        var changedAt = DateTimeOffset.UtcNow;
+            var changedAt = DateTimeOffset.UtcNow;
 
-        await ApplyScalarChangesAsync(book, request, changedAt, ct);
+            await ApplyScalarChangesAsync(book, request, changedAt, ct);
 
-        if (request.Authors is not null)
-            await ApplyAuthorChangesAsync(book, request.Authors, changedAt, ct);
+            if (request.Authors is not null)
+                await ApplyAuthorChangesAsync(book, request.Authors, changedAt, ct);
 
-        var updated = await _books.UpdateAsync(book, ct);
-        return updated ? MapBook(book) : null;
+            var updated = await _books.UpdateAsync(book, ct);
+            return updated ? MapBook(book) : null;
+        }
+        finally
+        {
+            gate.Release();
+        }
     }
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken ct = default)
     {
-        var book = await _books.GetByIdAsync(id, ct);
-        if (book is null)
-            return false;
+        var gate = _bookLocks.Get(id);
+        await gate.WaitAsync(ct);
+        try
+        {
+            var book = await _books.GetByIdAsync(id, ct);
+            if (book is null)
+                return false;
 
-        var removed = await _books.DeleteAsync(id, ct);
-        if (!removed)
-            return false;
+            var removed = await _books.DeleteAsync(id, ct);
+            if (!removed)
+                return false;
 
-        var snapshot = BuildBookSnapshot(book);
+            var snapshot = BuildBookSnapshot(book);
 
-        await AddAuditAsync(AuditFor(id, BookChangeType.Deleted, DateTimeOffset.UtcNow, EntityName, snapshot, null, "Book was deleted"), ct);
-        return true;
+            await AddAuditAsync(
+                AuditFor(id, BookChangeType.Deleted, DateTimeOffset.UtcNow, EntityName, snapshot, null, "Book was deleted"),
+                ct);
+
+            return true;
+        }
+        finally
+        {
+            gate.Release();
+        }
     }
 
     private async Task ApplyScalarChangesAsync(Book book, UpdateBookRequest request, DateTimeOffset changedAt, CancellationToken ct)
