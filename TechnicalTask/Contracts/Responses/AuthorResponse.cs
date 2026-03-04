@@ -1,7 +1,7 @@
 namespace TechnicalTask.Contracts.Responses;
 
 public sealed record AuthorResponse(
-    int Id,
+    Guid Id,
     string FirstName,
     string LastName,
     DateTime? BirthDate

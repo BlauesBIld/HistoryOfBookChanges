@@ -13,7 +13,7 @@ public class Audit
     {
     }
 
-    public Audit(Guid id, Guid bookId, BookChangeType changeType, DateTimeOffset changedAt, string fieldName, string oldValue, string newValue, string description)
+    public Audit(Guid id, Guid bookId, BookChangeType changeType, DateTimeOffset changedAt, string fieldName, string? oldValue, string? newValue, string description)
     {
         Id = id;
         BookId = bookId;

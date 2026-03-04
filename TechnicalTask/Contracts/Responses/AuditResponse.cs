@@ -1,8 +1,12 @@
 namespace TechnicalTask.Contracts.Responses;
 
 public sealed record AuditResponse(
-    string BookUid,
-    DateTime ChangedAtUtc,
-    string Description,
-    string? ChangeType
+    Guid Id,
+    Guid BookId,
+    string ChangeType,
+    DateTimeOffset ChangedAt,
+    string FieldName,
+    string? OldValue,
+    string? NewValue,
+    string Description
 );

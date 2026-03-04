@@ -2,9 +2,11 @@ namespace TechnicalTask.Entities;
 
 public class Book
 {
-    protected Book(){}
-    
-    public Book(Guid id, string title, string description, DateTime publishDate, List<Author>? authors)
+    protected Book()
+    {
+    }
+
+    public Book(Guid id, string title, string? description, DateTime publishDate, List<Author>? authors)
     {
         Id = id;
         Title = title;

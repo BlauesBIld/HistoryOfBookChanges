@@ -1,7 +1,7 @@
 namespace TechnicalTask.Contracts.Responses;
 
 public sealed record BookResponse(
-    string Uid,
+    Guid Uid,
     string Title,
     string? Description,
     DateTime PublishDate,
